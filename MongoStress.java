@@ -29,28 +29,29 @@ public class MongoStress {
 
       Random rnd = new Random();
       int line = 0;
+      int linePerSecond = 0;
       String strLine;
+      long lastTimestamp = System.currentTimeMillis();
       while ((strLine = br.readLine()) != null) {
-         if (line++ % 1000 == 0)
-            System.out.println(line);
-
+         if (System.currentTimeMillis() - lastTimestamp > 1000) {
+            System.out.println(linePerSecond + " lines/s\t\tline: " + line);
+            lastTimestamp = System.currentTimeMillis();
+            linePerSecond = 0;
+         }
          String ip = strLine.replace(".", "_");
          if (!ipToUUID.containsKey(ip))
             ipToUUID.put(ip, UUID.randomUUID().toString());
 
          DBObject query = new BasicDBObject("user", ipToUUID.get(ip));
          DBObject object = collection.findOne(query);
-         if (object == null) {
-            object = new BasicDBObject("user", ipToUUID.get(ip));
-            object.put("entities", new HashMap<String, List<Date>>());
-         }
+         // simulate doing stuff
 
          String entity = entities[rnd.nextInt(entities.length)];
-         Map<String, List<Date>> map = (Map<String, List<Date>>) object.get("entities");
-         if (!map.containsKey(entity))
-            map.put(entity, new ArrayList<Date>());
-         map.get(entity).add(new Date());
-         collection.update(query, object, true, false);
+         BasicDBObject op = new BasicDBObject();
+         op.put("$push", new BasicDBObject("entities." + entity, new Date()));
+         collection.update(query, op, true, false);
+         line++;
+         linePerSecond++;
       }
    }
 }
