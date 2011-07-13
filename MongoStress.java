@@ -18,7 +18,7 @@ import com.mongodb.DBObject;
 import com.mongodb.Mongo;
 
 public class MongoStress {
-  public static void main(String[] args) {
+  public static void main(String[] args) throws Exception {
       Mongo mongo = new Mongo();
       DB db = mongo.getDB("stress");
       DBCollection collection = db.getCollection("test");
@@ -55,4 +55,5 @@ public class MongoStress {
          collection.update(query, object, true, false);
       }
    }
+}
 
