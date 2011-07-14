@@ -1,6 +1,8 @@
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
@@ -24,10 +26,11 @@ public class MongoStress {
    public static String dbName;
    public static String collectionName;
    
-   public static AtomicInteger counter = new AtomicInteger();
    public static AtomicInteger total = new AtomicInteger();
+   public static AtomicInteger reads = new AtomicInteger();
+   public static AtomicInteger updates = new AtomicInteger();
    
-   public static String[] entities = new String[1000];
+   public static String[] entities = new String[300];
    public static LinkedBlockingDeque<String> queue = new LinkedBlockingDeque<String>(10000);
    
    public static void main(String[] args) throws Exception {
@@ -59,7 +62,7 @@ public class MongoStress {
       long lastTimestamp = System.currentTimeMillis();
       while ((strLine = br.readLine()) != null) {
          if (System.currentTimeMillis() - lastTimestamp > 1000) {
-            System.out.println(counter.getAndSet(0) + " lines/s\t\tline: " + total.get());
+            System.out.println("r:" + reads.getAndSet(0) + " u:" + updates.getAndSet(0) + " /s\t\ttotal: " + total.get());
             lastTimestamp = System.currentTimeMillis();
          }
          String ip = strLine.replace(".", "_");
@@ -85,18 +88,38 @@ public class MongoStress {
                DB db = mongo.getDB(dbName);
                DBCollection collection = db.getCollection(collectionName);
                
+               String entity = entities[rnd.nextInt(entities.length)];
+               
+               // read
                DBObject query = new BasicDBObject("user", user);
                DBObject object = collection.findOne(query);
+               reads.incrementAndGet();
                // simulate doing stuff
-
-               String entity = entities[rnd.nextInt(entities.length)];
+               
+               // allocate array if empty
+               if (object == null || !object.containsField("entities") || !((DBObject)object.get("entities")).containsField(entity) ) {
+                  List<Long> emptyArray = new ArrayList<Long>(10);
+                  for (int i = 0; i < 10; i++)
+                     emptyArray.add(null);
+                  BasicDBObject op = new BasicDBObject();
+                  op.put("$set", new BasicDBObject("entities." + entity, emptyArray));
+                  collection.update(query, op, true, false);
+                  updates.incrementAndGet();
+               } else {
+                  // trim array
+                  BasicDBObject op = new BasicDBObject();
+                  op.put("$pop", new BasicDBObject("entities." + entity, -1));
+                  collection.update(query, op, true, false);
+                  updates.incrementAndGet();
+               }
+               
+               // push time to array
                BasicDBObject op = new BasicDBObject();
                op.put("$push", new BasicDBObject("entities." + entity, System.currentTimeMillis()));
                collection.update(query, op, true, false);
+               updates.incrementAndGet();
                
                total.incrementAndGet();
-               counter.incrementAndGet();
-               
             } catch (InterruptedException e) {
                e.printStackTrace();
             }
