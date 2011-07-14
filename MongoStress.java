@@ -18,8 +18,8 @@ import com.mongodb.Mongo;
 public class MongoStress {
   public static void main(String[] args) throws Exception {
       Mongo mongo = new Mongo();
-      DB db = mongo.getDB("stress");
-      DBCollection collection = db.getCollection("test");
+      DB db = mongo.getDB(args[0]);
+      DBCollection collection = db.getCollection(args[1]);
 
       Map<String, String> ipToUUID = new HashMap<String, String>();
       BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
@@ -48,7 +48,7 @@ public class MongoStress {
 
          String entity = entities[rnd.nextInt(entities.length)];
          BasicDBObject op = new BasicDBObject();
-         op.put("$push", new BasicDBObject("entities." + entity, new Date()));
+         op.put("$push", new BasicDBObject("entities." + entity, System.currentTimeMillis()));
          collection.update(query, op, true, false);
          line++;
          linePerSecond++;
