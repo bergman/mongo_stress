@@ -30,7 +30,7 @@ public class MongoStress {
    public static AtomicInteger reads = new AtomicInteger();
    public static AtomicInteger updates = new AtomicInteger();
    
-   public static String[] entities = new String[300];
+   public static String[] entities;
    public static LinkedBlockingDeque<String> queue = new LinkedBlockingDeque<String>(10000);
    
    public static void main(String[] args) throws Exception {
@@ -38,17 +38,27 @@ public class MongoStress {
       collectionName = args[1];
       mongo = new Mongo();
       int threads = 10;
+      int entityCount = 300;
       
       try {
-         threads = Integer.parseInt(args[2]);
+         entityCount = Integer.parseInt(args[2]);
+      } catch (Exception e) {
+         System.out.println("defaulting to " + entityCount + " entities");
+      }
+      
+      try {
+         threads = Integer.parseInt(args[3]);
       } catch (Exception e) {
          System.out.println("defaulting to " + threads + " threads");
       }
       
       executor = Executors.newFixedThreadPool(threads);
       System.out.println("running " + threads + " threads");
-
+      
       Map<String, String> ipToUUID = new HashMap<String, String>();
+      entities = new String[entityCount];
+      System.out.println("simulating traffic on " + entityCount + " entities");
+      
       for (int i = 0; i < entities.length; i++)
          entities[i] = UUID.randomUUID().toString();
       
